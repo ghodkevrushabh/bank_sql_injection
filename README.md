@@ -23,19 +23,23 @@ This project operates as an educational "glass box" environment, intentionally d
     ├── sqlInjection.jsp     # The backend logic featuring unsafe string concatenation
     ├── secure.html          # The secure frontend application
     └── secure.jsp           # The remediated backend using PreparedStatement
+```
 
 🚀 Quick Start (Docker)
 Ensure you have Docker and Docker Compose installed on your machine.
 
 Clone the repository:
 
-Bash
+```
 git clone <your-repository-url>
 cd <repository-folder>
+```
+
 Build and spin up the containers:
 
-Bash
+```
 docker-compose up --build -d
+```
 Note: MySQL may take 15-30 seconds to fully initialize the tables on the first run.
 
 Access the Application:
@@ -46,21 +50,24 @@ Secure Version: http://localhost:8080/secure.html
 
 Tear down the environment:
 
-Bash
+```
 docker-compose down -v
+```
 💥 The Vulnerability (Proof of Concept)
 The vulnerable component of this application (sqlInjection.jsp) takes user input and directly concatenates it into the SQL query string:
 
-Java
+```
 // VULNERABLE CODE PATTERN
 String query = "SELECT account_number, balance FROM accounts WHERE account_number = '" + accNum + "'";
+```
 The Exploit
 Navigate to the vulnerable version and enter a standard account number: 1001. The application will return the balance normally.
 
 To exploit the vulnerability and steal sensitive data from the hidden users table, inject the following payload:
 
-SQL
+```
 1001' UNION SELECT username, password FROM users #
+```
 What Happens Under the Hood?
 The ' after 1001 prematurely closes the string intended for the account_number.
 
@@ -75,11 +82,12 @@ Result: The application leaks the usernames and passwords directly to the browse
 🛡️ The Remediation
 The secure component (secure.jsp) mitigates this exact attack vector by abandoning string concatenation in favor of parameterized queries (PreparedStatement).
 
-Java
+```
 // SECURE CODE PATTERN
 String query = "SELECT account_number, balance FROM accounts WHERE account_number = ?";
 PreparedStatement ps = conn.prepareStatement(query);
 ps.setString(1, accNum); 
+```
 When the exact same malicious payload is entered into the secure version, the database treats the input strictly as a literal string value rather than executable code. The database simply searches for an account literally named 1001' UNION SELECT username, password FROM users #, finds no match, and safely returns an empty result, entirely neutralizing the attack.
 
 👤 Author
