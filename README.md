@@ -54,41 +54,41 @@ Tear down the environment:
 docker-compose down -v
 ```
 💥 The Vulnerability (Proof of Concept)
-The vulnerable component of this application (sqlInjection.jsp) takes user input and directly concatenates it into the SQL query string:
+The vulnerable component of this application (sqlInjection.jsp) takes user input and directly concatenates it into the SQL query string. In this scenario, a missing closing quote in the backend code creates a direct injection vector:
 
 ```
+Java
 // VULNERABLE CODE PATTERN
-String query = "SELECT account_number, balance FROM accounts WHERE account_number = '" + accNum + "'";
+String query = "SELECT account_number, balance FROM accounts WHERE account_number = '" + accNum;
 ```
 The Exploit
 Navigate to the vulnerable version and enter a standard account number: 1001. The application will return the balance normally.
 
 To exploit the vulnerability and steal sensitive data from the hidden users table, inject the following payload:
-
 ```
-1001' UNION SELECT username, password FROM users #
-```
+SQL
+1001' UNION SELECT username, password FROM users
 What Happens Under the Hood?
-The ' after 1001 prematurely closes the string intended for the account_number.
-
+The ' after 1001 completes the string intended for the account_number.
+```
 The UNION operator tells the database to append a second result set to the original query.
 
-SELECT username, password FROM users fetches the sensitive administrative credentials.
+SELECT username, password FROM users successfully fetches the sensitive administrative credentials.
 
-The # symbol comments out the trailing ' that the Java application forcefully appends, preventing a syntax error.
+Because the backend code omits a trailing quote, no comment syntax (# or --) is required to prevent syntax errors.
 
-Result: The application leaks the usernames and passwords directly to the browser.
+Result: The application leaks the usernames and passwords directly to the browser, and the "glass box" UI displays the exact manipulated query.
 
 🛡️ The Remediation
-The secure component (secure.jsp) mitigates this exact attack vector by abandoning string concatenation in favor of parameterized queries (PreparedStatement).
-
+The secure component (secure.jsp) mitigates this exact attack vector by abandoning string concatenation entirely in favor of parameterized queries (PreparedStatement).
 ```
+Java
 // SECURE CODE PATTERN
 String query = "SELECT account_number, balance FROM accounts WHERE account_number = ?";
 PreparedStatement ps = conn.prepareStatement(query);
 ps.setString(1, accNum); 
 ```
-When the exact same malicious payload is entered into the secure version, the database treats the input strictly as a literal string value rather than executable code. The database simply searches for an account literally named 1001' UNION SELECT username, password FROM users #, finds no match, and safely returns an empty result, entirely neutralizing the attack.
+When the exact same malicious payload is entered into the secure version, the database treats the input strictly as a literal string value rather than executable code. The database simply searches for an account literally named 1001' UNION SELECT username, password FROM users, finds no match, and safely returns an empty result, completely neutralizing the attack.
 
 👤 Author
 Vrushabh Rajkumar Ghodke
