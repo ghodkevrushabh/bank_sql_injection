@@ -12,7 +12,7 @@ This project operates as an educational "glass box" environment, intentionally d
 * **Infrastructure:** Docker & Docker Compose
 
 ## 📁 Project Structure
-```text
+```
 .
 ├── docker-compose.yml       # Orchestrates the Tomcat web server and MySQL database
 ├── Dockerfile               # Builds the Tomcat image and installs the MySQL JDBC connector
